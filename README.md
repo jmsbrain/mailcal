@@ -9,7 +9,7 @@ A regular Android app (sideloaded, not a Light SDK tool). It still shows up in L
 Get the APK from [Releases](https://github.com/jmsbrain/mailcal/releases) and install it from a computer:
 
 ```
-adb install -r mailcal-1.0.0-beta.4.apk
+adb install -r mailcal-1.0.0-beta.4.1.0.apk
 ```
 
 ## How it works
@@ -24,11 +24,11 @@ Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or 
 
 ## Feeds
 
-Mailcal can also show subscribed .ics feeds (what SubcalScriber does), read-only. Switch between **MAILBOX** and **FEEDS** with the tabs under the top bar, or swipe sideways on the agenda (in month view, swipe below the grid; swiping on the grid changes months). In month view, tapping the selected day again also switches. Add feeds from MENU → FEEDS by typing or pasting a link; Google share links work for public calendars. Feeds refresh hourly, when the app opens and in the background.
+Mailcal can also show subscribed .ics feeds (what SubcalScriber does), read-only. Switch between **MAILBOX** and **FEEDS** with the tabs under the top bar, or swipe sideways on the list. In month view (no swiping there), tap the selected day again to switch. Add feeds from MENU → FEEDS by typing or pasting a link; Google share links work for public calendars. Feeds refresh hourly, when the app opens and in the background.
 
 ## Month view
 
-Tap MONTH on the agenda for a month grid. Days with events get a dot per event (up to three). Tap a day to list its events under the grid; swipe or use PREV/NEXT to change months. NEW starts on the selected day. LIST goes back, and the app remembers which view you used last.
+Tap MONTH on the agenda for a month grid. Days with events get a dot per event (up to three). Tap a day to list its events under the grid; PREV/NEXT change months. NEW starts on the selected day. LIST goes back, and the app remembers which view you used last.
 
 ## Reminders
 

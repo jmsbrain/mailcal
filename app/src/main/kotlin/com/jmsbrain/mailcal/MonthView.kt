@@ -1,7 +1,6 @@
 package com.jmsbrain.mailcal
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -53,17 +51,8 @@ fun MonthBody(
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = designDp(24f))) {
         item(key = "grid") {
-            var drag = 0f
-            Column(
-                Modifier.pointerInput(selected) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { drag = 0f },
-                        onDragEnd = {
-                            if (drag < -80f) onSelect(shift(1)) else if (drag > 80f) onSelect(shift(-1))
-                        },
-                    ) { _, amount -> drag += amount }
-                },
-            ) {
+            // No swiping here: PREV/NEXT change months.
+            Column {
                 Gap(8f)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton("PREV") { onSelect(shift(-1)) }
@@ -98,7 +87,6 @@ fun MonthBody(
                 Gap(10f)
             }
         }
-        // Outside the grid, so sideways swipes here switch source instead of month.
         item(key = "day") {
             Column(Modifier.fillMaxWidth()) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(LightStyle.secondary))

@@ -14,8 +14,8 @@ android {
         applicationId = "com.jmsbrain.mailcal"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.0.0-beta.4"
+        versionCode = 7
+        versionName = "1.0.0-beta.4.1.0"
     }
 
     buildTypes {

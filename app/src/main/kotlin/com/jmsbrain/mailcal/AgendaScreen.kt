@@ -153,9 +153,14 @@ fun AgendaScreen(
             Box(Modifier.fillMaxWidth().height(1.dp).background(LightStyle.secondary))
         }
 
-        // Swiping sideways switches source. (The month grid takes its own swipes for months.)
+        // In the list, swiping sideways switches source. Month view has no swipes (taps only).
         Box(
-            Modifier.fillMaxSize().pointerInput(Unit) {
+            Modifier.fillMaxSize().pointerInput(month) {
+                if (month) {
+                    // Swallow sideways swipes so they don't count as taps on a row.
+                    detectHorizontalDragGestures { change, _ -> change.consume() }
+                    return@pointerInput
+                }
                 var drag = 0f
                 detectHorizontalDragGestures(
                     onDragStart = { drag = 0f },
