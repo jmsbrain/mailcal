@@ -89,6 +89,7 @@ object Repo {
             updatedAt = prefs.getLong("updated", 0).takeIf { it > 0 },
         )
         rebuild()
+        if (account != null) SyncWorker.start(appContext)
     }
 
     // ---- account ----
@@ -113,15 +114,18 @@ object Repo {
         }
         // Outlives the sign-in screen.
         appScope.launch { sync() }
+        SyncWorker.start(appContext)
     }
 
     fun signOut() {
+        SyncWorker.stop(appContext)
         prefs.edit().clear().apply()
         cacheDir.listFiles()?.forEach { it.delete() }
         resources.clear()
         parsed.clear()
         dav = null
         _state.value = UiState()
+        rebuild()  // Clears the reminder alarm.
     }
 
     private fun loadAccount(): Account? {

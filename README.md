@@ -18,6 +18,7 @@ Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or 
 
 - The calendar on mailbox.org is the only real copy. Edits go straight to the server and are refused if the event changed elsewhere first, so nothing gets silently overwritten.
 - The app keeps an offline copy (30 days back, a year ahead) so the agenda opens without signal. Changes need a connection.
+- The copy refreshes when you open the app and in the background about every 30 minutes when online (Android may space this out when the phone is idle). Only calendars that changed are downloaded.
 - If the offline copy is ever lost, the app just downloads it again. Nothing on mailbox.org is touched.
 - Editing a repeating event asks whether to change **this one** or **all**. Edits change only the fields shown and keep everything else in the event (attendees and so on).
 
@@ -25,7 +26,7 @@ Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or 
 
 Pick a reminder when adding or editing an event: at the time of the event, 30 minutes, 1 hour, 12 hours, 1 day, 3 days, 1 week or 2 weeks before. It's saved in the event on mailbox.org, so other devices see it too.
 
-The phone shows a notification (default sound) when a reminder is due. That includes reminders set elsewhere, such as in mailbox.org's web calendar, once Mailcal has refreshed. Mailcal refreshes when you open it, not in the background, so open it after adding events elsewhere.
+The phone shows a notification (default sound) when a reminder is due. That includes reminders set elsewhere, such as in mailbox.org's web calendar.
 
 Events with several reminders, or reminders at other times, show "Custom" and are left as they are unless you pick a new one.
 

@@ -25,7 +25,7 @@ Use made-up data for screenshots.
 
 ## Project notes
 
-- Needs INTERNET (CalDAV), plus notifications/exact alarms/boot for reminders (`Reminders.kt`). No DAVx5 / CalendarContract: the server is the only copy, edits PUT with If-Match.
+- Needs INTERNET (CalDAV), plus notifications/exact alarms/boot for reminders (`Reminders.kt`); WorkManager background refresh every 30 min (`SyncWorker.kt`). No DAVx5 / CalendarContract: the server is the only copy, edits PUT with If-Match.
 - `VCal.kt` edits raw iCalendar so unknown properties survive; cover changes with `app/src/test/.../VCalTest.kt` (`gradlew :app:testDebugUnitTest`).
 - `Ics.kt` (parser + recurrence expansion) came from SubcalScriber.
 - Test end to end on the emulator with `tools/MockCalDav.java` (debug build allows http to 10.0.2.2 only). Never test with the user's real account.
