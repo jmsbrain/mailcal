@@ -127,11 +127,11 @@ private fun EventRow(item: Item, showCalendar: Boolean, zone: ZoneId, onClick: (
     val past = o.end.toInstant() < Instant.now()
     val color = if (past) LightStyle.secondary else LightStyle.content
     Row(Modifier.fillMaxWidth().flatClickable(onClick).padding(vertical = designDp(7f))) {
-        BasicText(
-            if (o.allDay) "all day" else clock(o.start.withZoneSameInstant(zone).toLocalTime()),
-            style = paragraphStyle().copy(color = LightStyle.secondary),
-            modifier = Modifier.width(designDp(112f)).padding(top = designDp(3f)),
-        )
+        Column(Modifier.width(designDp(112f)).padding(top = designDp(3f))) {
+            val (start, end) = timeLines(o, zone)
+            BasicText(start, style = paragraphStyle().copy(color = LightStyle.secondary))
+            if (end != null) BasicText(end, style = paragraphStyle().copy(color = LightStyle.secondary), maxLines = 2)
+        }
         Column(Modifier.weight(1f)) {
             BasicText(o.title, style = copyStyle().copy(color = color), maxLines = 2)
             val sub = listOfNotNull(
@@ -140,6 +140,25 @@ private fun EventRow(item: Item, showCalendar: Boolean, zone: ZoneId, onClick: (
             ).joinToString(" · ")
             if (sub.isNotEmpty()) BasicText(sub, style = paragraphStyle().copy(color = LightStyle.secondary), maxLines = 1)
         }
+    }
+}
+
+/** Start and end for the time column, e.g. "9:00a" / "9:30a", or "all day" / "to Fri". */
+private fun timeLines(o: Occurrence, zone: ZoneId): Pair<String, String?> {
+    val s = o.start.withZoneSameInstant(zone)
+    val e = o.end.withZoneSameInstant(zone)
+    val days = java.time.temporal.ChronoUnit.DAYS.between(s.toLocalDate(), e.toLocalDate())
+    fun day(d: LocalDate) = if (days < 7) d.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.US)
+        else d.format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.US))
+    if (o.allDay) {
+        val last = e.toLocalDate().minusDays(1)
+        return "all day" to if (last > s.toLocalDate()) "to " + day(last) else null
+    }
+    val start = clock(s.toLocalTime())
+    return when {
+        e <= s -> start to null
+        days == 0L -> start to clock(e.toLocalTime())
+        else -> start to day(e.toLocalDate()) + " " + clock(e.toLocalTime())
     }
 }
 
