@@ -38,6 +38,10 @@ fun AgendaScreen(
     onOpen: (Item) -> Unit,
     onNew: (LocalDate?) -> Unit,
     onCalendars: () -> Unit,
+    month: Boolean,
+    onMonthChange: (Boolean) -> Unit,
+    selected: LocalDate,
+    onSelect: (LocalDate) -> Unit,
 ) {
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now(zone)
@@ -61,11 +65,19 @@ fun AgendaScreen(
 
     Column(Modifier.fillMaxSize()) {
         TopBar(
-            left = { TextButton("TODAY") { scope.launch { listState.scrollToItem(todayIndex) } } },
+            left = {
+                Row {
+                    TextButton("TODAY") {
+                        if (month) onSelect(today) else scope.launch { listState.scrollToItem(todayIndex) }
+                    }
+                    HGap(24f)
+                    TextButton(if (month) "LIST" else "MONTH") { onMonthChange(!month) }
+                }
+            },
             right = {
                 Row {
                     if (s.calendars.any { !it.info.readOnly }) {
-                        TextButton("NEW") { onNew(null) }
+                        TextButton("NEW") { onNew(if (month) selected else null) }
                         HGap(24f)
                     }
                     MenuButton(
@@ -98,6 +110,10 @@ fun AgendaScreen(
             Box(Modifier.fillMaxWidth().height(1.dp).background(LightStyle.secondary))
         }
 
+        if (month) {
+            MonthBody(s, selected, onSelect, onOpen, showCalendar, zone)
+            return@Column
+        }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = designDp(24f))) {
             items(rows, key = { it.key }) { row ->
                 when (row) {
@@ -122,7 +138,7 @@ private fun Status(text: String) {
 }
 
 @Composable
-private fun EventRow(item: Item, showCalendar: Boolean, zone: ZoneId, onClick: () -> Unit) {
+fun EventRow(item: Item, showCalendar: Boolean, zone: ZoneId, onClick: () -> Unit) {
     val o = item.occ
     val past = o.end.toInstant() < Instant.now()
     val color = if (past) LightStyle.secondary else LightStyle.content

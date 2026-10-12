@@ -16,7 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import java.time.LocalDate
@@ -56,6 +58,8 @@ sealed interface Screen {
 fun App() {
     val s by Repo.state.collectAsState()
     val stack = remember { mutableStateListOf<Screen>() }
+    var month by remember { mutableStateOf(Repo.monthView()) }
+    var selected by remember { mutableStateOf(LocalDate.now()) }
 
     Box(
         Modifier
@@ -78,6 +82,10 @@ fun App() {
                 onOpen = { stack += Screen.Event(it) },
                 onNew = { stack += Screen.Edit(null, day = it) },
                 onCalendars = { stack += Screen.Calendars },
+                month = month,
+                onMonthChange = { month = it; Repo.setMonthView(it) },
+                selected = selected,
+                onSelect = { selected = it },
             )
             is Screen.Event -> EventScreen(
                 item = top.item,

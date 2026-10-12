@@ -1,6 +1,6 @@
 # Mailcal
 
-A mailbox.org calendar for the Light Phone III: see your agenda, add, edit and delete events. Black and white, styled like LightOS.
+A mailbox.org calendar for the Light Phone III: see your agenda or a month view, add, edit and delete events. Black and white, styled like LightOS.
 
 A regular Android app (sideloaded, not a Light SDK tool). It still shows up in LightOS's tool list.
 
@@ -21,6 +21,10 @@ Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or 
 - The copy refreshes when you open the app and in the background about every 30 minutes when online (Android may space this out when the phone is idle). Only calendars that changed are downloaded.
 - If the offline copy is ever lost, the app just downloads it again. Nothing on mailbox.org is touched.
 - Editing a repeating event asks whether to change **this one** or **all**. Edits change only the fields shown and keep everything else in the event (attendees and so on).
+
+## Month view
+
+Tap MONTH on the agenda for a month grid. Days with events get a dot per event (up to three). Tap a day to list its events under the grid; swipe or use PREV/NEXT to change months. NEW starts on the selected day. LIST goes back, and the app remembers which view you used last.
 
 ## Reminders
 
