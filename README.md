@@ -24,7 +24,7 @@ Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or 
 
 ## Feeds
 
-Mailcal can also show subscribed .ics feeds (what SubcalScriber does), read-only. Switch between **MAILBOX** and **FEEDS** with the tabs under the top bar, or swipe sideways on the list. In month view (no swiping there), tap the selected day again to switch. Add feeds from MENU → FEEDS by typing or pasting a link; Google share links work for public calendars. Feeds refresh hourly, when the app opens and in the background.
+Mailcal can also show subscribed .ics feeds (what SubcalScriber does), read-only. Switch between **MAILBOX** and **FEEDS** by tapping the tabs under the top bar, or in month view by tapping the selected day again. (The app has no swipe gestures.) Add feeds from MENU → FEEDS by typing or pasting a link; Google share links work for public calendars. Feeds refresh hourly, when the app opens and in the background.
 
 ## Month view
 

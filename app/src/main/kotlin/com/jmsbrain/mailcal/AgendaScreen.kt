@@ -20,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,8 +78,6 @@ fun AgendaScreen(
     // Each source opens at today.
     val listState = remember(source) { LazyListState(todayIndex) }
     val scope = rememberCoroutineScope()
-    val currentSource by rememberUpdatedState(source)
-    val switchTo by rememberUpdatedState(onSource)
 
     Column(Modifier.fillMaxSize()) {
         TopBar(
@@ -153,22 +150,10 @@ fun AgendaScreen(
             Box(Modifier.fillMaxWidth().height(1.dp).background(LightStyle.secondary))
         }
 
-        // In the list, swiping sideways switches source. Month view has no swipes (taps only).
+        // No swipe actions: sideways swipes are swallowed so they don't count as taps on a row.
         Box(
-            Modifier.fillMaxSize().pointerInput(month) {
-                if (month) {
-                    // Swallow sideways swipes so they don't count as taps on a row.
-                    detectHorizontalDragGestures { change, _ -> change.consume() }
-                    return@pointerInput
-                }
-                var drag = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = { drag = 0f },
-                    onDragEnd = {
-                        if (drag < -120f && currentSource == Source.Mailbox) switchTo(Source.Feeds)
-                        else if (drag > 120f && currentSource == Source.Feeds) switchTo(Source.Mailbox)
-                    },
-                ) { _, amount -> drag += amount }
+            Modifier.fillMaxSize().pointerInput(Unit) {
+                detectHorizontalDragGestures { change, _ -> change.consume() }
             },
         ) {
             val empty = when {
