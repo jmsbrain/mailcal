@@ -9,7 +9,7 @@ A regular Android app (sideloaded, not a Light SDK tool). It still shows up in L
 Get the APK from [Releases](https://github.com/jmsbrain/mailcal/releases) and install it from a computer:
 
 ```
-adb install -r mailcal-1.0.0-beta.2.apk
+adb install -r mailcal-1.0.0-beta.3.apk
 ```
 
 ## How it works
