@@ -34,7 +34,8 @@ private val monthFmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US)
 /** Month grid with a dot per event (up to 3); the selected day's events are listed below. */
 @Composable
 fun MonthBody(
-    s: UiState,
+    items: List<Item>,
+    empty: String,
     selected: LocalDate,
     onSelect: (LocalDate) -> Unit,
     onOpen: (Item) -> Unit,
@@ -43,7 +44,7 @@ fun MonthBody(
 ) {
     val today = LocalDate.now(zone)
     val month = YearMonth.from(selected)
-    val byDay = remember(s.items) { eventsByDay(s.items, zone) }
+    val byDay = remember(items) { eventsByDay(items, zone) }
     val dayItems = byDay[selected].orEmpty()
     // Same day number in the next/previous month, or its last day.
     fun shift(months: Long) = selected.plusMonths(months)
@@ -91,12 +92,17 @@ fun MonthBody(
                     }
                 }
                 Gap(10f)
+            }
+        }
+        // Outside the grid, so sideways swipes here switch source instead of month.
+        item(key = "day") {
+            Column(Modifier.fillMaxWidth()) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(LightStyle.secondary))
                 Gap(14f)
                 BasicText(dayLabel(selected), style = labelStyle().copy(color = if (selected == today) LightStyle.content else LightStyle.secondary))
                 if (dayItems.isEmpty()) {
                     Gap(6f)
-                    Note(if (s.syncing && s.items.isEmpty()) "Loading…" else "Nothing scheduled.")
+                    Note(empty)
                 }
             }
         }

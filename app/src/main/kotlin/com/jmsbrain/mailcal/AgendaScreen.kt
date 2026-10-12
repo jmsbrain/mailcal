@@ -1,30 +1,38 @@
 package com.jmsbrain.mailcal
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.launch
+
+/** Where the agenda's events come from. */
+enum class Source { Mailbox, Feeds }
 
 private sealed interface Row {
     val key: String
@@ -35,9 +43,13 @@ private sealed interface Row {
 @Composable
 fun AgendaScreen(
     s: UiState,
+    feeds: FeedsState,
+    source: Source,
+    onSource: (Source) -> Unit,
     onOpen: (Item) -> Unit,
     onNew: (LocalDate?) -> Unit,
     onCalendars: () -> Unit,
+    onFeeds: () -> Unit,
     month: Boolean,
     onMonthChange: (Boolean) -> Unit,
     selected: LocalDate,
@@ -45,12 +57,15 @@ fun AgendaScreen(
 ) {
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now(zone)
-    val showCalendar = s.calendars.count { !it.hidden } > 1
+    val mail = source == Source.Mailbox
+    val items = if (mail) s.items else feeds.items
+    val loading = if (mail) s.syncing else feeds.refreshing
+    val showCalendar = if (mail) s.calendars.count { !it.hidden } > 1 else feeds.feeds.count { !it.hidden } > 1
     var confirmSignOut by remember { mutableStateOf(false) }
 
-    val rows = remember(s.items, today) {
+    val rows = remember(items, today) {
         val out = mutableListOf<Row>()
-        val byDay = s.items.groupBy { it.occ.start.withZoneSameInstant(zone).toLocalDate() }
+        val byDay = items.groupBy { it.occ.start.withZoneSameInstant(zone).toLocalDate() }
         val days = (byDay.keys + today).toSortedSet()
         for (d in days) {
             val list = byDay[d].orEmpty()
@@ -60,8 +75,11 @@ fun AgendaScreen(
         out.distinctBy { it.key }
     }
     val todayIndex = rows.indexOfFirst { it is Row.Day && it.day == today }.coerceAtLeast(0)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = todayIndex)
+    // Each source opens at today.
+    val listState = remember(source) { LazyListState(todayIndex) }
     val scope = rememberCoroutineScope()
+    val currentSource by rememberUpdatedState(source)
+    val switchTo by rememberUpdatedState(onSource)
 
     Column(Modifier.fillMaxSize()) {
         TopBar(
@@ -76,59 +94,112 @@ fun AgendaScreen(
             },
             right = {
                 Row {
-                    if (s.calendars.any { !it.info.readOnly }) {
+                    if (mail && s.calendars.any { !it.info.readOnly }) {
                         TextButton("NEW") { onNew(if (month) selected else null) }
                         HGap(24f)
                     }
                     MenuButton(
                         "MENU",
-                        listOf(
+                        if (mail) listOf(
                             "REFRESH" to { Repo.refresh() },
                             "CALENDARS" to onCalendars,
                             "SIGN OUT" to { confirmSignOut = true },
+                        ) else listOf(
+                            "REFRESH" to { Repo.refreshFeeds() },
+                            "FEEDS" to onFeeds,
                         ),
                     )
                 }
             },
         )
         Column(Modifier.padding(horizontal = designDp(24f))) {
+            SourceTabs(source, onSource) {
+                when {
+                    loading -> Status("Updating…")
+                    mail && s.updatedAt != null -> Status("Updated " + updatedText(s.updatedAt, zone))
+                    !mail -> feeds.feeds.filter { !it.hidden }.mapNotNull { it.updatedAt }.minOrNull()
+                        ?.let { Status("Updated " + updatedText(it, zone)) }
+                }
+            }
             when {
                 confirmSignOut -> {
+                    Gap(6f)
                     BasicText("Sign out? This only removes the copy on this phone; your calendar stays on mailbox.org.", style = paragraphStyle())
                     Row {
                         TextButton("SIGN OUT") { Repo.signOut() }
                         HGap(32f)
                         TextButton("CANCEL") { confirmSignOut = false }
                     }
-                    Gap(8f)
                 }
-                s.syncing -> Status("Updating…")
-                s.error != null -> BasicText(s.error, style = paragraphStyle())
-                s.updatedAt != null -> Status("Updated " + updatedText(s.updatedAt, zone))
+                mail && s.error != null && !loading -> { Gap(4f); BasicText(s.error, style = paragraphStyle()) }
+                !mail && feeds.feeds.any { it.error != null && !it.hidden } && !loading -> {
+                    Gap(4f)
+                    Note("Some feeds couldn't update. MENU → FEEDS to see why.")
+                }
             }
             Gap(6f)
             Box(Modifier.fillMaxWidth().height(1.dp).background(LightStyle.secondary))
         }
 
-        if (month) {
-            MonthBody(s, selected, onSelect, onOpen, showCalendar, zone)
-            return@Column
-        }
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = designDp(24f))) {
-            items(rows, key = { it.key }) { row ->
-                when (row) {
-                    is Row.Day -> Column(Modifier.fillMaxWidth().flatClickable { onNew(row.day) }.padding(top = designDp(18f), bottom = designDp(4f))) {
-                        BasicText(dayLabel(row.day), style = labelStyle().copy(color = if (row.day == today) LightStyle.content else LightStyle.secondary))
-                        if (row.empty) {
-                            Gap(6f)
-                            Note(if (s.syncing && s.items.isEmpty()) "Loading…" else "Nothing scheduled.")
+        // Swiping sideways switches source. (The month grid takes its own swipes for months.)
+        Box(
+            Modifier.fillMaxSize().pointerInput(Unit) {
+                var drag = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { drag = 0f },
+                    onDragEnd = {
+                        if (drag < -120f && currentSource == Source.Mailbox) switchTo(Source.Feeds)
+                        else if (drag > 120f && currentSource == Source.Feeds) switchTo(Source.Mailbox)
+                    },
+                ) { _, amount -> drag += amount }
+            },
+        ) {
+            val empty = when {
+                !mail && feeds.feeds.isEmpty() -> "No feeds yet. MENU → FEEDS to add a calendar link."
+                loading && items.isEmpty() -> "Loading…"
+                else -> "Nothing scheduled."
+            }
+            if (month) {
+                MonthBody(items, empty, selected, onSelect, onOpen, showCalendar, zone)
+            } else {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = designDp(24f))) {
+                    items(rows, key = { it.key }) { row ->
+                        when (row) {
+                            is Row.Day -> Column(
+                                Modifier.fillMaxWidth()
+                                    .flatClickable { if (mail) onNew(row.day) }
+                                    .padding(top = designDp(18f), bottom = designDp(4f)),
+                            ) {
+                                BasicText(dayLabel(row.day), style = labelStyle().copy(color = if (row.day == today) LightStyle.content else LightStyle.secondary))
+                                if (row.empty) {
+                                    Gap(6f)
+                                    Note(empty)
+                                }
+                            }
+                            is Row.Event -> EventRow(row.item, showCalendar, zone) { onOpen(row.item) }
                         }
                     }
-                    is Row.Event -> EventRow(row.item, showCalendar, zone) { onOpen(row.item) }
+                    item { Gap(60f) }
                 }
             }
-            item { Gap(60f) }
         }
+    }
+}
+
+/** MAILBOX · FEEDS, with [status] on the right. */
+@Composable
+private fun SourceTabs(source: Source, onSource: (Source) -> Unit, status: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Source.entries.forEachIndexed { i, src ->
+            if (i > 0) BasicText("  ·  ", style = labelStyle())
+            BasicText(
+                src.name.uppercase(),
+                style = labelStyle().copy(color = if (src == source) LightStyle.content else LightStyle.secondary),
+                modifier = Modifier.flatClickable { onSource(src) }.padding(vertical = designDp(4f)),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        status()
     }
 }
 

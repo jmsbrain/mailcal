@@ -15,8 +15,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     override suspend fun doWork(): Result {
         Repo.init(applicationContext)
+        Feeds.init(applicationContext)
         val s = Repo.state.value
         if (s.account != null && !s.syncing) Repo.sync()
+        Feeds.refreshAll()
         return Result.success()
     }
 

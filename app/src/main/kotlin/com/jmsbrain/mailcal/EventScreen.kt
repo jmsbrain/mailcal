@@ -81,7 +81,8 @@ fun EventScreen(
                 Gap(4f)
                 Note(repeatText(o.rrule))
             }
-            if (showCalendar) Section("CALENDAR", item.cal.name + if (item.cal.readOnly) " (read only)" else "")
+            val isFeed = item.cal.url.startsWith(Feeds.FEED_PREFIX)
+            if (showCalendar) Section(if (isFeed) "FEED" else "CALENDAR", item.cal.name + if (item.cal.readOnly && !isFeed) " (read only)" else "")
             if (o.location.isNotBlank()) Section("WHERE", o.location)
             val reminder = remember(item) { Repo.resource(item)?.ics?.let { VCal.reminderOf(it, o, true, zone) } }
             if (reminder != null && reminder != Reminder.None) {

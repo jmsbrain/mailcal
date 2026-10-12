@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Repo.init(applicationContext)
+        Feeds.init(applicationContext)
         setContent { App() }
     }
 
@@ -39,6 +40,8 @@ class MainActivity : ComponentActivity() {
         val stale = (s.updatedAt ?: 0) < System.currentTimeMillis() - 5 * 60_000
         if (s.account != null && !s.syncing && stale) lifecycleScope.launch { Repo.sync() }
         else Repo.rebuild()  // The day may have changed.
+        Feeds.rebuild()
+        Repo.refreshFeedsIfStale()
     }
 }
 
@@ -52,11 +55,15 @@ sealed interface Screen {
     /** [item] null makes a new event on [day]; [one] edits a single repeat. */
     data class Edit(val item: Item?, val one: Boolean = false, val day: LocalDate? = null) : Screen
     data object Calendars : Screen
+    data object Feeds : Screen
+    data class FeedEdit(val id: String) : Screen
 }
 
 @Composable
 fun App() {
     val s by Repo.state.collectAsState()
+    val feeds by Feeds.state.collectAsState()
+    var source by remember { mutableStateOf(Repo.source()) }
     val stack = remember { mutableStateListOf<Screen>() }
     var month by remember { mutableStateOf(Repo.monthView()) }
     var selected by remember { mutableStateOf(LocalDate.now()) }
@@ -82,6 +89,10 @@ fun App() {
                 onOpen = { stack += Screen.Event(it) },
                 onNew = { stack += Screen.Edit(null, day = it) },
                 onCalendars = { stack += Screen.Calendars },
+                feeds = feeds,
+                source = source,
+                onSource = { source = it; Repo.setSource(it) },
+                onFeeds = { stack += Screen.Feeds },
                 month = month,
                 onMonthChange = { month = it; Repo.setMonthView(it) },
                 selected = selected,
@@ -89,7 +100,7 @@ fun App() {
             )
             is Screen.Event -> EventScreen(
                 item = top.item,
-                showCalendar = s.calendars.size > 1,
+                showCalendar = if (top.item.cal.url.startsWith(Feeds.FEED_PREFIX)) true else s.calendars.size > 1,
                 onBack = ::back,
                 onEdit = { one -> stack += Screen.Edit(top.item, one) },
                 onDeleted = { stack.clear() },
@@ -103,6 +114,8 @@ fun App() {
                 onSaved = { stack.clear() },
             )
             Screen.Calendars -> CalendarsScreen(s, onBack = ::back)
+            Screen.Feeds -> FeedsScreen(feeds, onBack = ::back, onEdit = { stack += Screen.FeedEdit(it) })
+            is Screen.FeedEdit -> FeedEditScreen(top.id, feeds, onBack = ::back)
         }
     }
 }

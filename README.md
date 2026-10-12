@@ -22,6 +22,10 @@ Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or 
 - If the offline copy is ever lost, the app just downloads it again. Nothing on mailbox.org is touched.
 - Editing a repeating event asks whether to change **this one** or **all**. Edits change only the fields shown and keep everything else in the event (attendees and so on).
 
+## Feeds
+
+Mailcal can also show subscribed .ics feeds (what SubcalScriber does), read-only. Switch between **MAILBOX** and **FEEDS** with the tabs under the top bar, or swipe sideways on the agenda (in month view, swipe below the grid; swiping on the grid changes months). Add feeds from MENU → FEEDS by typing or pasting a link; Google share links work for public calendars. Feeds refresh hourly, when the app opens and in the background.
+
 ## Month view
 
 Tap MONTH on the agenda for a month grid. Days with events get a dot per event (up to three). Tap a day to list its events under the grid; swipe or use PREV/NEXT to change months. NEW starts on the selected day. LIST goes back, and the app remembers which view you used last.

@@ -136,6 +136,19 @@ object Repo {
 
     // ---- sync ----
 
+    /** Downloads every feed again, even if the screen changes. */
+    fun refreshFeeds() {
+        appScope.launch { Feeds.refreshAll(force = true) }
+    }
+
+    /** Feeds older than an hour, from the app or the background job. */
+    fun refreshFeedsIfStale() {
+        appScope.launch { Feeds.refreshAll() }
+    }
+
+    fun source() = if (prefs.getString("source", null) == Source.Feeds.name) Source.Feeds else Source.Mailbox
+    fun setSource(s: Source) = prefs.edit().putString("source", s.name).apply()
+
     /** Full refresh that keeps going if the screen changes. */
     fun refresh() {
         if (!_state.value.syncing) appScope.launch { sync(force = true) }
