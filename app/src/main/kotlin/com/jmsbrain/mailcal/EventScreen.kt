@@ -83,6 +83,10 @@ fun EventScreen(
             }
             if (showCalendar) Section("CALENDAR", item.cal.name + if (item.cal.readOnly) " (read only)" else "")
             if (o.location.isNotBlank()) Section("WHERE", o.location)
+            val reminder = remember(item) { Repo.resource(item)?.ics?.let { VCal.reminderOf(it, o, true, zone) } }
+            if (reminder != null && reminder != Reminder.None) {
+                Section("REMINDER", if (reminder == Reminder.Custom) "Custom" else reminderText(reminder))
+            }
             if (o.description.isNotBlank()) Section("NOTES", o.description)
 
             error?.let {

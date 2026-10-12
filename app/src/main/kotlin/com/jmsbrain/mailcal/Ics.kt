@@ -30,7 +30,11 @@ data class IcsEvent(
     val exdates: List<IcsTime>,
     val recurrenceId: IcsTime?,
     val cancelled: Boolean,
+    val alarms: List<Alarm> = emptyList(),
 )
+
+/** A VALARM trigger: [offset] from the start (or end), or a fixed time [at]. */
+data class Alarm(val offset: Duration?, val fromEnd: Boolean, val at: java.time.Instant?)
 
 data class RRule(
     val freq: String,
@@ -57,6 +61,8 @@ data class Occurrence(
     /** Where the series put this one (its RECURRENCE-ID), for repeats. */
     val originalStart: ZonedDateTime? = null,
     val rrule: RRule? = null,
+    /** When reminders go off. */
+    val alarms: List<java.time.Instant> = emptyList(),
 )
 
 object Ics {
@@ -65,20 +71,26 @@ object Ics {
         val events = mutableListOf<IcsEvent>()
         val stack = ArrayDeque<String>()
         var props = mutableListOf<Prop>()
+        var alarms = mutableListOf<Alarm>()
         for (line in unfold(text)) {
             val p = parseLine(line) ?: continue
             when (p.name) {
                 "BEGIN" -> {
                     stack.addLast(p.value.uppercase())
-                    if (p.value.equals("VEVENT", true)) props = mutableListOf()
+                    if (p.value.equals("VEVENT", true)) { props = mutableListOf(); alarms = mutableListOf() }
                 }
                 "END" -> {
                     if (p.value.equals("VEVENT", true) && stack.lastOrNull() == "VEVENT") {
-                        toEvent(props)?.let(events::add)
+                        toEvent(props)?.copy(alarms = alarms)?.let(events::add)
                     }
                     stack.removeLastOrNull()
                 }
-                else -> if (stack.lastOrNull() == "VEVENT") props += p
+                else -> when {
+                    stack.lastOrNull() == "VEVENT" -> props += p
+                    // Reminder triggers inside the event.
+                    p.name == "TRIGGER" && stack.lastOrNull() == "VALARM" && stack.getOrNull(stack.size - 2) == "VEVENT" ->
+                        alarm(p)?.let(alarms::add)
+                }
             }
         }
         return events
@@ -132,6 +144,9 @@ object Ics {
         return Occurrence(
             e.uid, e.summary.ifBlank { "(No title)" }, e.location, e.description, start, end, e.start.allDay,
             recurring = series, originalStart = if (series) original ?: start else null, rrule = rule,
+            alarms = e.alarms.mapNotNull { a ->
+                a.at ?: a.offset?.let { (if (a.fromEnd) end else start).plus(it).toInstant() }
+            },
         )
     }
 
@@ -330,7 +345,15 @@ object Ics {
         "UTC" to "UTC",
     )
 
-    private fun duration(v: String): Duration? = runCatching {
+    private fun alarm(p: Prop): Alarm? {
+        if (p.params["VALUE"].equals("DATE-TIME", true)) {
+            return time(p.value, emptyMap())?.zoned(ZoneOffset.UTC)?.toInstant()?.let { Alarm(null, false, it) }
+        }
+        val d = duration(p.value) ?: return null
+        return Alarm(d, p.params["RELATED"].equals("END", true), null)
+    }
+
+    fun duration(v: String): Duration? = runCatching {
         val m = Regex("([+-])?P(?:(\\d+)W)?(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?").matchEntire(v.trim()) ?: return null
         val (sign, w, d, h, min, s) = m.destructured
         val total = Duration.ofDays((w.toLongOrNull() ?: 0) * 7 + (d.toLongOrNull() ?: 0))

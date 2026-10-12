@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -124,7 +125,12 @@ fun ValueRow(label: String, value: String, onClick: (() -> Unit)?) {
 fun MenuButton(label: String, items: List<Pair<String, () -> Unit>>) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        TextButton(label) { expanded = true }
+        val focus = LocalFocusManager.current
+        TextButton(label) {
+            // Keeps the keyboard from coming back when the menu closes.
+            focus.clearFocus()
+            expanded = true
+        }
         if (expanded) {
             Popup(
                 popupPositionProvider = DropdownPosition(alignEnd = true),
@@ -159,7 +165,7 @@ fun MenuList(items: List<Pair<String, () -> Unit>>) {
         Modifier
             .background(LightStyle.background)
             .border(1.dp, LightStyle.content)
-            .heightIn(max = designDp(320f))
+            .heightIn(max = designDp(440f))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = designDp(16f), vertical = designDp(6f)),
     ) {

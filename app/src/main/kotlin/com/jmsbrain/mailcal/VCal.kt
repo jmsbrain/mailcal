@@ -54,6 +54,16 @@ enum class Repeat(val label: String, val freq: String?) {
     Custom("CUSTOM (KEPT)", null),
 }
 
+/** How long before the start the reminder goes off. */
+enum class Reminder(val label: String, val minutes: Long?) {
+    None("NONE", null),
+    AtStart("AT TIME OF EVENT", 0), Min30("30 MIN BEFORE", 30), Hour1("1 HOUR BEFORE", 60),
+    Hour12("12 HOURS BEFORE", 12 * 60), Day1("1 DAY BEFORE", 24 * 60), Day3("3 DAYS BEFORE", 3 * 24 * 60),
+    Week1("1 WEEK BEFORE", 7 * 24 * 60), Week2("2 WEEKS BEFORE", 14 * 24 * 60),
+    /** Reminders this app can't build (several, or other times); left as is. */
+    Custom("CUSTOM (KEPT)", null),
+}
+
 /** What the editor shows; times are in the phone's zone. End is inclusive for all-day. */
 data class Draft(
     val title: String,
@@ -63,6 +73,7 @@ data class Draft(
     val start: LocalDateTime,
     val end: LocalDateTime,
     val repeat: Repeat,
+    val reminder: Reminder = Reminder.Custom,
 )
 
 /** Reads and edits raw iCalendar text so unknown properties (alarms, attendees…) survive. */
@@ -219,7 +230,47 @@ object VCal {
         e.set(timeProp("DTSTART", d.start, d.allDay, mode, phone))
         val end = if (d.allDay) d.end.toLocalDate().plusDays(1).atStartOfDay() else d.end
         e.set(timeProp("DTEND", end, d.allDay, mode, phone))
+        setReminder(e, d.reminder, d.title)
         touch(e)
+    }
+
+    // Replaces the event's reminders only if the choice changed.
+    private fun setReminder(e: VComp, r: Reminder, title: String) {
+        if (r == Reminder.Custom || r == reminderOf(e)) return
+        e.children.removeAll { it.name == "VALARM" }
+        val minutes = r.minutes ?: return
+        e.children += VComp("VALARM").apply {
+            props += VProp("ACTION", emptyList(), "DISPLAY")
+            props += VProp("DESCRIPTION", emptyList(), escape(title.ifBlank { "Reminder" }))
+            props += VProp("TRIGGER", emptyList(), trigger(minutes))
+        }
+    }
+
+    private fun trigger(minutes: Long): String = when {
+        minutes == 0L -> "PT0S"
+        minutes % (7 * 24 * 60) == 0L -> "-P${minutes / (7 * 24 * 60)}W"
+        minutes % (24 * 60) == 0L -> "-P${minutes / (24 * 60)}D"
+        minutes % 60 == 0L -> "-PT${minutes / 60}H"
+        else -> "-PT${minutes}M"
+    }
+
+    /** The menu choice for an event's reminders. */
+    private fun reminderOf(e: VComp): Reminder {
+        val alarms = e.children.filter { it.name == "VALARM" }
+        if (alarms.isEmpty()) return Reminder.None
+        val t = alarms.singleOrNull()?.prop("TRIGGER") ?: return Reminder.Custom
+        if (t.param("VALUE").equals("DATE-TIME", true) || t.param("RELATED").equals("END", true)) return Reminder.Custom
+        val before = Ics.duration(t.value)?.negated() ?: return Reminder.Custom
+        return Reminder.entries.firstOrNull { it.minutes != null && it.minutes == before.toMinutes() && before.seconds % 60 == 0L }
+            ?: Reminder.Custom
+    }
+
+    /** The reminder choice for [occ]: its own override if it has one, else the series. */
+    fun reminderOf(text: String, occ: Occurrence, one: Boolean, phone: ZoneId): Reminder {
+        val root = parse(text) ?: return Reminder.Custom
+        val own = override(root, occ.uid, occ.originalStart ?: occ.start, phone)
+        val e = (if (one) own ?: master(root, occ.uid) else master(root, occ.uid) ?: own) ?: return Reminder.Custom
+        return reminderOf(e)
     }
 
     private fun touch(e: VComp) {

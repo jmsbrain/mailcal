@@ -98,6 +98,32 @@ class VCalTest {
         assertEquals(1, occ(text).size)
     }
 
+    @Test fun newEventReminder() {
+        val d = Draft("Call", "", "", false, LocalDateTime.of(2026, 10, 14, 12, 0), LocalDateTime.of(2026, 10, 14, 13, 0),
+            Repeat.None, Reminder.Min30)
+        val text = VCal.create(d, ny).first
+        assertTrue(text.contains("TRIGGER:-PT30M"))
+        val o = occ(text).single()
+        assertEquals(listOf(o.start.minusMinutes(30).toInstant()), o.alarms)
+        assertEquals(Reminder.Min30, VCal.reminderOf(text, o, false, ny))
+        val none = VCal.create(d.copy(reminder = Reminder.None), ny).first
+        assertFalse(none.contains("VALARM"))
+    }
+
+    @Test fun reminderKeptUnlessChanged() {
+        val all = occ(weekly)
+        // 10 minutes isn't a menu choice: it reads as Custom and survives edits.
+        assertEquals(Reminder.Custom, VCal.reminderOf(weekly, all[0], false, ny))
+        val kept = VCal.updateAll(weekly, all[0], draftOf(all[0]) { it.copy(title = "x", reminder = Reminder.Custom) }, ny)
+        assertTrue(kept.contains("TRIGGER:-PT10M"))
+        val changed = VCal.updateAll(weekly, all[0], draftOf(all[0]) { it.copy(reminder = Reminder.Day1) }, ny)
+        assertFalse(changed.contains("-PT10M"))
+        assertTrue(changed.contains("TRIGGER:-P1D"))
+        assertEquals(1, Regex("BEGIN:VALARM").findAll(changed).count())
+        val removed = VCal.updateAll(weekly, all[0], draftOf(all[0]) { it.copy(reminder = Reminder.None) }, ny)
+        assertFalse(removed.contains("VALARM"))
+    }
+
     @Test fun repeatOf() {
         assertEquals(Repeat.Weekly, VCal.repeatOf("FREQ=WEEKLY"))
         assertEquals(Repeat.Custom, VCal.repeatOf("FREQ=WEEKLY;BYDAY=MO,WE"))

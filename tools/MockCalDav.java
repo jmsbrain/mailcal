@@ -22,6 +22,12 @@ public class MockCalDav {
         add("/cal/personal/", "yoga", ev("yoga", "Yoga", "Studio", t.format(f) + "T180000", t.format(f) + "T190000", "FREQ=WEEKLY"));
         add("/cal/work/", "standup", ev("standup", "Team standup", "", t.minusDays(3).format(f) + "T090000", t.minusDays(3).format(f) + "T091500", "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"));
         add("/cal/work/", "offsite", "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:offsite\r\nSUMMARY:Offsite\r\nDTSTART;VALUE=DATE:" + t.plusDays(5).format(f) + "\r\nDTEND;VALUE=DATE:" + t.plusDays(7).format(f) + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
+        // Reminder goes off about a minute after the server starts.
+        DateTimeFormatter z = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
+        Instant soon = Instant.now().plusSeconds(180);
+        add("/cal/personal/", "soon", String.join("\r\n", "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", "UID:soon",
+            "SUMMARY:Reminder test", "LOCATION:Kitchen", "DTSTART:" + z.format(soon), "DTEND:" + z.format(soon.plusSeconds(1800)),
+            "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:-PT2M", "END:VALARM", "END:VEVENT", "END:VCALENDAR", ""));
         add("/cal/holidays/", "h1", "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:h1\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:" + t.plusDays(3).format(f) + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
 
         HttpServer s = HttpServer.create(new InetSocketAddress(5232), 0);

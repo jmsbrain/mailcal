@@ -57,6 +57,7 @@ object Repo {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var cacheDir: File
+    private lateinit var appContext: Context
     private val lock = Mutex()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var dav: CalDav? = null
@@ -72,6 +73,7 @@ object Repo {
 
     fun init(context: Context) {
         if (::prefs.isInitialized) return
+        appContext = context.applicationContext
         prefs = context.getSharedPreferences("mailcal", Context.MODE_PRIVATE)
         cacheDir = File(context.filesDir, "calendars").apply { mkdirs() }
         val account = loadAccount()
@@ -215,6 +217,7 @@ object Repo {
         }
         items.sortWith(compareBy({ it.occ.start.toLocalDate() }, { !it.occ.allDay }, { it.occ.start }, { it.occ.title }))
         _state.update { it.copy(items = items) }
+        Reminders.schedule(appContext, items)
     }
 
     // ---- editing ----

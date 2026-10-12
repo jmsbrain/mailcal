@@ -1,6 +1,12 @@
 package com.jmsbrain.mailcal
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +67,17 @@ fun EditScreen(
     val dirty = d != original
 
     fun cancel() { if (dirty) confirmDiscard = true else onCancel() }
+
+    // Reminders need notifications (asked the first time one is picked).
+    val context = LocalContext.current
+    val notifyLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) error = "Reminders are saved to the event, but this phone won't show them until notifications are allowed for Mailcal."
+    }
+    fun askNotifications() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) notifyLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     fun save() {
         if (d.title.isBlank()) { error = "Add a title."; return }
@@ -166,6 +183,19 @@ fun EditScreen(
                     )
                 }
             }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { ValueRow("REMINDER", reminderText(d.reminder), null) }
+                MenuButton(
+                    "CHANGE",
+                    Reminder.entries.filter { it != Reminder.Custom || original.reminder == Reminder.Custom }
+                        .map { r ->
+                            r.label to {
+                                d = d.copy(reminder = r)
+                                if (r.minutes != null) askNotifications()
+                            }
+                        },
+                )
+            }
             if (item == null) {
                 val writable = s.calendars.filter { !it.info.readOnly }
                 if (writable.size > 1) {
@@ -186,14 +216,22 @@ private fun initialDraft(item: Item?, one: Boolean, day: LocalDate?, zone: ZoneI
         val now = LocalDateTime.now(zone)
         val start = if (day == null || day == now.toLocalDate()) now.truncatedTo(ChronoUnit.HOURS).plusHours(1)
         else day.atTime(9, 0)
-        return Draft("", "", "", false, start, start.plusHours(1), Repeat.None)
+        return Draft("", "", "", false, start, start.plusHours(1), Repeat.None, Reminder.None)
     }
     val o = item.occ
     val start = o.start.withZoneSameInstant(zone).toLocalDateTime()
     var end = o.end.withZoneSameInstant(zone).toLocalDateTime()
     if (o.allDay) end = end.minusDays(1).coerceAtLeast(start)
     val repeat = if (one) Repeat.None else VCal.repeatOf(Repo.resource(item)?.ics?.let { VCal.rruleOf(it, o.uid) })
-    return Draft(o.title.takeIf { it != "(No title)" } ?: "", o.location, o.description, o.allDay, start, end, repeat)
+    val reminder = Repo.resource(item)?.ics?.let { VCal.reminderOf(it, o, one, zone) } ?: Reminder.Custom
+    return Draft(o.title.takeIf { it != "(No title)" } ?: "", o.location, o.description, o.allDay, start, end, repeat, reminder)
+}
+
+/** "30 min before", "None". */
+fun reminderText(r: Reminder) = when (r) {
+    Reminder.AtStart -> "At time of event"
+    Reminder.Custom -> "Custom (kept)"
+    else -> r.label.lowercase().replaceFirstChar { it.uppercase() }
 }
 
 /** Moves the start and keeps the length. */
