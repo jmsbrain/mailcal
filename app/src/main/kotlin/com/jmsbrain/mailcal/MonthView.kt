@@ -39,6 +39,8 @@ fun MonthBody(
     selected: LocalDate,
     onSelect: (LocalDate) -> Unit,
     onOpen: (Item) -> Unit,
+    /** Tapping the selected day again flips MAILBOX / FEEDS. */
+    onReselect: () -> Unit,
     showCalendar: Boolean,
     zone: ZoneId,
 ) {
@@ -86,7 +88,9 @@ fun MonthBody(
                         for (i in 0 until 7) {
                             val date = week.getOrNull(i)
                             Box(Modifier.weight(1f)) {
-                                if (date != null) DayCell(date, date == selected, date == today, byDay[date]?.size ?: 0) { onSelect(date) }
+                                if (date != null) DayCell(date, date == selected, date == today, byDay[date]?.size ?: 0) {
+                                    if (date == selected) onReselect() else onSelect(date)
+                                }
                             }
                         }
                     }

@@ -62,6 +62,7 @@ fun AgendaScreen(
     val loading = if (mail) s.syncing else feeds.refreshing
     val showCalendar = if (mail) s.calendars.count { !it.hidden } > 1 else feeds.feeds.count { !it.hidden } > 1
     var confirmSignOut by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
 
     val rows = remember(items, today) {
         val out = mutableListOf<Row>()
@@ -112,10 +113,22 @@ fun AgendaScreen(
                 }
             },
         )
+        // Errors are a one-line status (tap for details) so both sources keep the same layout.
+        val error = when {
+            loading -> null
+            mail -> s.error
+            feeds.feeds.any { it.error != null && !it.hidden } -> "Some feeds couldn't update. MENU → FEEDS to see why."
+            else -> null
+        }
         Column(Modifier.padding(horizontal = designDp(24f))) {
             SourceTabs(source, onSource) {
                 when {
                     loading -> Status("Updating…")
+                    error != null -> BasicText(
+                        "Couldn't update",
+                        style = labelStyle().copy(color = LightStyle.content),
+                        modifier = Modifier.flatClickable { showError = !showError }.padding(vertical = designDp(4f)),
+                    )
                     mail && s.updatedAt != null -> Status("Updated " + updatedText(s.updatedAt, zone))
                     !mail -> feeds.feeds.filter { !it.hidden }.mapNotNull { it.updatedAt }.minOrNull()
                         ?.let { Status("Updated " + updatedText(it, zone)) }
@@ -131,10 +144,9 @@ fun AgendaScreen(
                         TextButton("CANCEL") { confirmSignOut = false }
                     }
                 }
-                mail && s.error != null && !loading -> { Gap(4f); BasicText(s.error, style = paragraphStyle()) }
-                !mail && feeds.feeds.any { it.error != null && !it.hidden } && !loading -> {
+                showError && error != null -> {
                     Gap(4f)
-                    Note("Some feeds couldn't update. MENU → FEEDS to see why.")
+                    BasicText(error, style = paragraphStyle(), modifier = Modifier.flatClickable { showError = false })
                 }
             }
             Gap(6f)
@@ -160,7 +172,7 @@ fun AgendaScreen(
                 else -> "Nothing scheduled."
             }
             if (month) {
-                MonthBody(items, empty, selected, onSelect, onOpen, showCalendar, zone)
+                MonthBody(items, empty, selected, onSelect, onOpen, onReselect = { onSource(if (mail) Source.Feeds else Source.Mailbox) }, showCalendar, zone)
             } else {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = designDp(24f))) {
                     items(rows, key = { it.key }) { row ->
