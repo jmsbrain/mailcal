@@ -4,6 +4,14 @@ A mailbox.org calendar for the Light Phone III: see your agenda, add, edit and d
 
 A regular Android app (sideloaded, not a Light SDK tool). It still shows up in LightOS's tool list.
 
+## Download
+
+Get the APK from [Releases](https://github.com/jmsbrain/mailcal/releases) and install it from a computer:
+
+```
+adb install -r mailcal-1.0.0-beta.apk
+```
+
 ## How it works
 
 Mailcal talks to mailbox.org directly over CalDAV. It does **not** use DAVx5 or the phone's built-in calendar, so there's no sync between the two that can break or reset.
